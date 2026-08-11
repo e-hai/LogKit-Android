@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+  <style name="LogTheme" parent="Theme.AppCompat.Light.NoActionBar">
+    <item name="colorPrimary">@color/background</item>
+    <item name="colorPrimaryDark">@color/background</item>
+    <item name="colorAccent">@color/background</item>
+  </style>
+</resources>

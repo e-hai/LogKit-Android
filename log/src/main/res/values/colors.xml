@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+  <color name="background">#FF2B2B2B</color>
+  <color name="verbose">#FF939393</color>
+  <color name="debug">#FF6897BB</color>
+  <color name="info">#FF6A8759</color>
+  <color name="warning">#FFBBB529</color>
+  <color name="error">#FFFF6B68</color>
+  <color name="tag_normal">#FFA385CF</color>
+  <color name="tag_select">#FFD385CF</color>
+
+</resources>
