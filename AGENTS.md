@@ -1,6 +1,8 @@
-# AGENTS.md - Developer Guide for AI Agents
+# AGENTS.md - Developer Guide for AI Agents (Android Repository)
 
-Welcome to **LogKit**! This file serves as the definitive reference manual and coding guidelines for AI Agents (such as Antigravity, AGY, Cursor, Copilot, etc.) working on this repository.
+Welcome to **LogKit Android**! This file serves as the definitive reference manual and coding guidelines for AI Agents (such as Antigravity, AGY, Cursor, Copilot, etc.) working on this Android repository.
+
+> 💡 **Notice**: The iOS Swift codebase is maintained in a dedicated independent repository: [LogKit-iOS](https://github.com/e-hai/LogKit-iOS).
 
 ---
 

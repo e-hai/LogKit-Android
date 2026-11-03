@@ -1,6 +1,19 @@
-# LogKit
+# LogKit (Android)
 
-**LogKit** 是一款纯 Kotlin 打造、Jetpack Compose 原生驱动的 Android 边端日志框架，内置极简美观、支持明暗双主题与高效筛选的应用内日志调试控制台。
+<p align="center">
+  <b>纯 Kotlin 打造、Jetpack Compose 原生驱动的 Android 边端日志框架与应用内调试控制台</b>
+</p>
+
+<p align="center">
+  <a href="https://jitpack.io/#e-hai/LogKit"><img src="https://jitpack.io/v/e-hai/LogKit.svg" alt="JitPack" /></a>
+  <img src="https://img.shields.io/badge/Platform-Android-brightgreen.svg" alt="Platform" />
+  <img src="https://img.shields.io/badge/Kotlin-2.2+-blue.svg" alt="Kotlin" />
+  <img src="https://img.shields.io/badge/UI-Jetpack%20Compose-purple.svg" alt="Compose" />
+  <a href="https://github.com/e-hai/LogKit-iOS"><img src="https://img.shields.io/badge/iOS%20Version-LogKit--iOS-orange.svg" alt="iOS Version" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-red.svg" alt="License" /></a>
+</p>
+
+> 💡 **跨平台支持**：如果你正在寻找 iOS / Swift 版本的实现，请访问独立仓库 👉 [LogKit-iOS (Swift / SwiftUI)](https://github.com/e-hai/LogKit-iOS)。
 
 ---
 
