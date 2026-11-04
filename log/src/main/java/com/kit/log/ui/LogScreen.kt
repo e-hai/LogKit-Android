@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -134,28 +136,9 @@ fun LogScreen(
         counts
     }
 
-    // 列表滚动状态（用于实现滑动时自动收起/展开 Header）
+    // 列表滚动状态
     val listState = rememberLazyListState()
     var isHeaderVisible by remember { mutableStateOf(true) }
-
-    var previousIndex by remember { mutableStateOf(0) }
-    var previousScrollOffset by remember { mutableStateOf(0) }
-
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        val currentIndex = listState.firstVisibleItemIndex
-        val currentOffset = listState.firstVisibleItemScrollOffset
-
-        if (currentIndex > previousIndex || (currentIndex == previousIndex && currentOffset > previousScrollOffset + 15)) {
-            if (currentIndex > 0) {
-                isHeaderVisible = false
-            }
-        } else if (currentIndex < previousIndex || (currentIndex == previousIndex && currentOffset < previousScrollOffset - 15)) {
-            isHeaderVisible = true
-        }
-
-        previousIndex = currentIndex
-        previousScrollOffset = currentOffset
-    }
 
     // 依据 Level 过滤后的日志列表
     val displayedLogs = remember(allLogs, selectedLevels) {
@@ -242,6 +225,15 @@ fun LogScreen(
                                     Text(
                                         text = if (isDarkTheme) "☀️" else "🌙",
                                         fontSize = 18.sp
+                                    )
+                                }
+
+                                // 手动收起 Header 控制栏按钮 (与 iOS 保持一致)
+                                IconButton(onClick = { isHeaderVisible = false }) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowUp,
+                                        contentDescription = "收起控制栏",
+                                        tint = themeColors.textSecondary
                                     )
                                 }
                             },
