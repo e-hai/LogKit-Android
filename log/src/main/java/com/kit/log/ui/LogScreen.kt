@@ -10,14 +10,12 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +23,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -86,16 +85,19 @@ private val LightColors = LogThemeColors(
     dialogBackground = Color(0xFFFFFFFF)
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun LogScreen(
     viewModel: LogViewModel,
     onBackClick: () -> Unit
 ) {
-    val tags by viewModel.tagMSF.collectAsState()
-    val logs by viewModel.logMSF.collectAsState()
-    var selectedTag by remember { mutableStateOf(LogViewModel.TAG_SHOW_ALL_LOG) }
-    var showTagDialog by remember { mutableStateOf(false) }
+    val allTags by viewModel.tagMSF.collectAsState()
+    val allLogs by viewModel.logMSF.collectAsState()
+    val selectedTags by viewModel.selectedTagsMSF.collectAsState()
+
+    // 可折叠搜索栏状态
+    var isSearchExpanded by remember { mutableStateOf(false) }
+    var tagSearchQuery by remember { mutableStateOf("") }
 
     // 明暗主题切换状态 (默认暗色主题)
     var isDarkTheme by remember { mutableStateOf(true) }
@@ -115,11 +117,27 @@ fun LogScreen(
     val allLevels = remember { listOf("VERBOSE", "DEBUG", "INFO", "WARN", "ERROR") }
     var selectedLevels by remember { mutableStateOf(allLevels.toSet()) }
 
+    // 统计各 Level 在当前数据集中的条数
+    val levelCounts = remember(allLogs) {
+        val counts = mutableMapOf<String, Int>()
+        allLevels.forEach { level -> counts[level] = 0 }
+        allLogs.forEach { log ->
+            val p = log.priority.uppercase()
+            when {
+                p.contains("V") || p.contains("VERBOSE") -> counts["VERBOSE"] = (counts["VERBOSE"] ?: 0) + 1
+                p.contains("D") || p.contains("DEBUG") -> counts["DEBUG"] = (counts["DEBUG"] ?: 0) + 1
+                p.contains("I") || p.contains("INFO") -> counts["INFO"] = (counts["INFO"] ?: 0) + 1
+                p.contains("W") || p.contains("WARN") -> counts["WARN"] = (counts["WARN"] ?: 0) + 1
+                p.contains("E") || p.contains("ERROR") -> counts["ERROR"] = (counts["ERROR"] ?: 0) + 1
+            }
+        }
+        counts
+    }
+
     // 列表滚动状态（用于实现滑动时自动收起/展开 Header）
     val listState = rememberLazyListState()
     var isHeaderVisible by remember { mutableStateOf(true) }
 
-    // 监测列表滚动方向与位置
     var previousIndex by remember { mutableStateOf(0) }
     var previousScrollOffset by remember { mutableStateOf(0) }
 
@@ -128,12 +146,10 @@ fun LogScreen(
         val currentOffset = listState.firstVisibleItemScrollOffset
 
         if (currentIndex > previousIndex || (currentIndex == previousIndex && currentOffset > previousScrollOffset + 15)) {
-            // 向上滑动浏览：自动收起顶部 Header，释放 100% 列表全屏空间
             if (currentIndex > 0) {
                 isHeaderVisible = false
             }
         } else if (currentIndex < previousIndex || (currentIndex == previousIndex && currentOffset < previousScrollOffset - 15)) {
-            // 向下滑动或回到顶部：展开顶部 Header
             isHeaderVisible = true
         }
 
@@ -142,9 +158,19 @@ fun LogScreen(
     }
 
     // 依据 Level 过滤后的日志列表
-    val displayedLogs = remember(logs, selectedLevels) {
-        logs.filter { log ->
+    val displayedLogs = remember(allLogs, selectedLevels) {
+        allLogs.filter { log ->
             isLevelSelected(log.priority, selectedLevels)
+        }
+    }
+
+    // 按输入关键词过滤的 Tag 列表（保持原自然字典顺序，不作热度重排）
+    val filteredTags = remember(tagSearchQuery, allTags) {
+        val rawList = allTags.filter { it != LogViewModel.TAG_SHOW_ALL_LOG }
+        if (tagSearchQuery.isBlank()) {
+            rawList
+        } else {
+            rawList.filter { it.contains(tagSearchQuery, ignoreCase = true) }
         }
     }
 
@@ -157,7 +183,7 @@ fun LogScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
 
-                // 可动画折叠收起的沉浸式顶部控制区域（带有 statusBarsPadding 保证不被状态栏遮挡）
+                // 顶部可收起折叠 Header
                 AnimatedVisibility(
                     visible = isHeaderVisible,
                     enter = expandVertically() + fadeIn(),
@@ -168,7 +194,7 @@ fun LogScreen(
                             .background(themeColors.appBarBackground)
                             .statusBarsPadding()
                     ) {
-                        // 标准舒适 TopAppBar
+                        // 1. 顶栏 TopAppBar
                         TopAppBar(
                             title = {
                                 Column {
@@ -179,9 +205,16 @@ fun LogScreen(
                                             color = themeColors.textPrimary
                                         )
                                     )
+                                    val tagTitle = if (selectedTags.isEmpty()) {
+                                        "Tag: 全部标签"
+                                    } else {
+                                        "Tags (${selectedTags.size}): ${selectedTags.joinToString(", ")}"
+                                    }
                                     Text(
-                                        text = "Tag: $selectedTag (${displayedLogs.size}/${logs.size} 条)",
-                                        style = MaterialTheme.typography.bodySmall.copy(color = themeColors.textSecondary)
+                                        text = "$tagTitle (${displayedLogs.size}/${allLogs.size} 条)",
+                                        style = MaterialTheme.typography.bodySmall.copy(color = themeColors.textSecondary),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             },
@@ -195,20 +228,20 @@ fun LogScreen(
                                 }
                             },
                             actions = {
+                                // Tag 搜索折叠/展开按钮
+                                IconButton(onClick = { isSearchExpanded = !isSearchExpanded }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = "搜索过滤Tag",
+                                        tint = if (isSearchExpanded || selectedTags.isNotEmpty()) MaterialTheme.colorScheme.primary else themeColors.textPrimary
+                                    )
+                                }
+
                                 // 明/暗 主题一键切换按钮
                                 IconButton(onClick = { isDarkTheme = !isDarkTheme }) {
                                     Text(
                                         text = if (isDarkTheme) "☀️" else "🌙",
                                         fontSize = 18.sp
-                                    )
-                                }
-
-                                // Tag 选择与搜索弹窗触发按钮
-                                IconButton(onClick = { showTagDialog = true }) {
-                                    Icon(
-                                        imageVector = Icons.Default.List,
-                                        contentDescription = "选择Tag",
-                                        tint = if (selectedTag != LogViewModel.TAG_SHOW_ALL_LOG) MaterialTheme.colorScheme.primary else themeColors.textPrimary
                                     )
                                 }
                             },
@@ -217,7 +250,107 @@ fun LogScreen(
                             )
                         )
 
-                        // 1. 级别 (Priority) 筛选开关 Chip 栏 (舒适触控尺寸)
+                        // 2. 可折叠的 Tag 搜索与多选操作栏
+                        AnimatedVisibility(
+                            visible = isSearchExpanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(themeColors.filterBarBackground)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                // 搜索输入框
+                                OutlinedTextField(
+                                    value = tagSearchQuery,
+                                    onValueChange = { tagSearchQuery = it },
+                                    placeholder = { Text("搜索并多选 Tag...", color = themeColors.textSecondary, fontSize = 13.sp) },
+                                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = themeColors.textSecondary) },
+                                    trailingIcon = {
+                                        if (tagSearchQuery.isNotEmpty()) {
+                                            IconButton(onClick = { tagSearchQuery = "" }) {
+                                                Icon(Icons.Default.Clear, contentDescription = "清空", tint = themeColors.textSecondary)
+                                            }
+                                        }
+                                    },
+                                    singleLine = true,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(50.dp),
+                                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                                        textColor = themeColors.textPrimary,
+                                        cursorColor = MaterialTheme.colorScheme.primary,
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = themeColors.dividerColor
+                                    )
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // Tag 多选滚动条（自然字典序排列，支持点选勾选多选）
+                                if (filteredTags.isEmpty()) {
+                                    Text(
+                                        text = "未找到匹配 \"$tagSearchQuery\" 的标签",
+                                        color = themeColors.textSecondary,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(vertical = 4.dp)
+                                    )
+                                } else {
+                                    LazyRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // 全选 / 清空全部按钮
+                                        item {
+                                            FilterChip(
+                                                selected = selectedTags.isEmpty(),
+                                                onClick = { viewModel.clearAllTags() },
+                                                label = { Text("全部 Tag", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                                                colors = FilterChipDefaults.filterChipColors(
+                                                    containerColor = themeColors.chipBackground,
+                                                    labelColor = themeColors.textPrimary,
+                                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                                    selectedLabelColor = Color.White
+                                                )
+                                            )
+                                        }
+
+                                        items(filteredTags) { tag ->
+                                            val isSelected = selectedTags.contains(tag)
+                                            FilterChip(
+                                                selected = isSelected,
+                                                onClick = { viewModel.toggleTag(tag) },
+                                                label = {
+                                                    val prefix = if (isSelected) "✓ " else ""
+                                                    val highlighted = buildHighlightedString(tag, tagSearchQuery)
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        if (prefix.isNotEmpty()) {
+                                                            Text(prefix, fontWeight = FontWeight.Bold)
+                                                        }
+                                                        Text(highlighted, fontSize = 12.sp)
+                                                    }
+                                                },
+                                                colors = FilterChipDefaults.filterChipColors(
+                                                    containerColor = themeColors.chipBackground,
+                                                    labelColor = themeColors.textPrimary,
+                                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                                    selectedLabelColor = Color.White
+                                                ),
+                                                border = FilterChipDefaults.filterChipBorder(
+                                                    borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                                    borderWidth = 1.dp
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 3. 级别 (Priority) 筛选开关 Chip 栏 (支持短按多选 + 长按独占只看该级别)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -227,7 +360,7 @@ fun LogScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "级别 (${selectedLevels.size}/${allLevels.size}):",
+                                text = "级别:",
                                 color = if (selectedLevels.size < allLevels.size) MaterialTheme.colorScheme.primary else themeColors.textSecondary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
@@ -250,10 +383,6 @@ fun LogScreen(
                                     labelColor = themeColors.textSecondary,
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                                     selectedLabelColor = Color.White
-                                ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    borderColor = if (isAllSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                    borderWidth = 1.dp
                                 )
                             )
 
@@ -268,62 +397,107 @@ fun LogScreen(
                                     "ERROR" -> "E"
                                     else -> level
                                 }
+                                val count = levelCounts[level] ?: 0
 
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        selectedLevels = if (isSelected) {
-                                            if (selectedLevels.size > 1) selectedLevels - level else selectedLevels
-                                        } else {
-                                            selectedLevels + level
-                                        }
-                                    },
-                                    label = {
-                                        Text(
-                                            text = if (isSelected) "✓ $shortName" else shortName,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 11.sp
+                                Box(
+                                    modifier = Modifier
+                                        .combinedClickable(
+                                            onClick = {
+                                                // 短按：常规多选/反选切换
+                                                selectedLevels = if (isSelected) {
+                                                    if (selectedLevels.size > 1) selectedLevels - level else selectedLevels
+                                                } else {
+                                                    selectedLevels + level
+                                                }
+                                            },
+                                            onLongClick = {
+                                                // 长按：独占该级别 (Solo Mode)！若已是独占态则恢复全选
+                                                selectedLevels = if (selectedLevels == setOf(level)) {
+                                                    allLevels.toSet()
+                                                } else {
+                                                    setOf(level)
+                                                }
+                                                Toast.makeText(context, if (selectedLevels.size == 1) "已独占过滤: 只看 $level" else "已恢复全选级别", Toast.LENGTH_SHORT).show()
+                                            }
                                         )
-                                    },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        containerColor = themeColors.chipBackground,
-                                        labelColor = if (themeColors.isDark) Color(0xFF666666) else Color(0xFF888888),
-                                        selectedContainerColor = color,
-                                        selectedLabelColor = Color.White
-                                    ),
-                                    border = FilterChipDefaults.filterChipBorder(
-                                        borderColor = if (isSelected) Color.White.copy(alpha = 0.8f) else Color.Transparent,
-                                        borderWidth = 1.dp
-                                    )
-                                )
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isSelected) color else themeColors.chipBackground,
+                                        modifier = Modifier.padding(vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = if (isSelected) "✓ $shortName ($count)" else "$shortName ($count)",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            color = if (isSelected) Color.White else (if (themeColors.isDark) Color(0xFF888888) else Color(0xFF666666)),
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
 
-                        // 2. 常用 Tag 横向快捷列表 (舒适按压体验)
-                        if (tags.isNotEmpty()) {
-                            LazyRow(
+                        // 4. 活动 Tag 胶囊栏（当选中了具体 Tag 时常驻显示，支持单个一键点击 ✕ 清除）
+                        if (selectedTags.isNotEmpty()) {
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(themeColors.filterBarBackground)
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                items(tags) { tag ->
-                                    val isSelected = tag == selectedTag
-                                    FilterChip(
-                                        selected = isSelected,
-                                        onClick = {
-                                            selectedTag = tag
-                                            viewModel.loadLog(tag)
-                                        },
-                                        label = { Text(tag) },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            containerColor = themeColors.chipBackground,
-                                            labelColor = themeColors.textPrimary,
-                                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                            selectedLabelColor = Color.White
-                                        )
-                                    )
+                                Text(
+                                    text = "已选 (${selectedTags.size}):",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(end = 6.dp)
+                                )
+
+                                LazyRow(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    items(selectedTags.toList()) { tag ->
+                                        Surface(
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = tag,
+                                                    fontSize = 11.sp,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                IconButton(
+                                                    onClick = { viewModel.removeTag(tag) },
+                                                    modifier = Modifier.size(16.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Close,
+                                                        contentDescription = "移除",
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(12.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                TextButton(
+                                    onClick = { viewModel.clearAllTags() },
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Text("清空", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }
@@ -339,8 +513,8 @@ fun LogScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (selectedLevels.size < allLevels.size) {
-                                "未匹配到相关级别的日志"
+                            text = if (selectedLevels.size < allLevels.size || selectedTags.isNotEmpty()) {
+                                "未匹配到相关条件的日志"
                             } else {
                                 "暂无相关日志记录"
                             },
@@ -396,135 +570,6 @@ fun LogScreen(
             }
         }
     }
-
-    // 当 Tag 较多时专用的 Tag 搜索与过滤弹窗对话框
-    if (showTagDialog) {
-        TagSelectionDialog(
-            tags = tags,
-            selectedTag = selectedTag,
-            themeColors = themeColors,
-            onTagSelected = { tag ->
-                selectedTag = tag
-                viewModel.loadLog(tag)
-            },
-            onDismissRequest = { showTagDialog = false }
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TagSelectionDialog(
-    tags: List<String>,
-    selectedTag: String,
-    themeColors: LogThemeColors,
-    onTagSelected: (String) -> Unit,
-    onDismissRequest: () -> Unit
-) {
-    var tagQuery by remember { mutableStateOf("") }
-    val filteredTags = remember(tagQuery, tags) {
-        if (tagQuery.isBlank()) {
-            tags
-        } else {
-            tags.filter { it.contains(tagQuery, ignoreCase = true) }
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismissRequest) {
-                Text("关闭", color = MaterialTheme.colorScheme.primary)
-            }
-        },
-        title = {
-            Text(
-                text = "查找并筛选 Tag 标签",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = themeColors.textPrimary
-                )
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 380.dp)
-            ) {
-                // 搜索 Tag 的输入框
-                OutlinedTextField(
-                    value = tagQuery,
-                    onValueChange = { tagQuery = it },
-                    placeholder = { Text("输入 Tag 名称过滤...", color = themeColors.textSecondary) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = themeColors.textSecondary) },
-                    trailingIcon = {
-                        if (tagQuery.isNotEmpty()) {
-                            IconButton(onClick = { tagQuery = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "清除", tint = themeColors.textSecondary)
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        textColor = themeColors.textPrimary,
-                        cursorColor = MaterialTheme.colorScheme.primary,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = themeColors.dividerColor
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Tag 网格列表（支持搜索高亮）
-                if (filteredTags.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("未找到包含 \"$tagQuery\" 的 Tag", color = themeColors.textSecondary, fontSize = 13.sp)
-                    }
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        items(filteredTags) { tag ->
-                            val isSelected = tag == selectedTag
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = {
-                                    onTagSelected(tag)
-                                    onDismissRequest()
-                                },
-                                label = {
-                                    Text(
-                                        text = buildHighlightedString(tag, tagQuery),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    containerColor = themeColors.chipBackground,
-                                    labelColor = themeColors.textPrimary,
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = Color.White
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        containerColor = themeColors.dialogBackground
-    )
 }
 
 @Composable
