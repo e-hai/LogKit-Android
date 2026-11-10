@@ -237,7 +237,7 @@ fun LogScreen(
                                     )
                                 }
                             },
-                            colors = TopAppBarDefaults.smallTopAppBarColors(
+                            colors = TopAppBarDefaults.topAppBarColors(
                                 containerColor = themeColors.appBarBackground
                             )
                         )
@@ -271,8 +271,9 @@ fun LogScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(50.dp),
-                                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                                        textColor = themeColors.textPrimary,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = themeColors.textPrimary,
+                                        unfocusedTextColor = themeColors.textPrimary,
                                         cursorColor = MaterialTheme.colorScheme.primary,
                                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                                         unfocusedBorderColor = themeColors.dividerColor
@@ -332,6 +333,8 @@ fun LogScreen(
                                                     selectedLabelColor = Color.White
                                                 ),
                                                 border = FilterChipDefaults.filterChipBorder(
+                                                    enabled = true,
+                                                    selected = isSelected,
                                                     borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                                                     borderWidth = 1.dp
                                                 )

@@ -60,7 +60,7 @@ fun DemoMainScreen(
         topBar = {
             TopAppBar(
                 title = { Text("LogKit Demo", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.smallTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             )
