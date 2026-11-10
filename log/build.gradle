@@ -43,9 +43,43 @@ afterEvaluate {
         publications {
             release(MavenPublication) {
                 from components.release
-                groupId = 'com.github.e-hai'
-                artifactId = 'LogKit-Android'
-                version = '1.0.0'
+
+                // 1. 坐标三要素动态化 (支持命令行/CI/JitPack覆盖，具备稳妥默认值)
+                groupId = project.findProperty('PROJ_GROUP') ?: project.findProperty('groupId') ?: 'com.github.e-hai'
+                artifactId = project.findProperty('PROJ_ARTIFACT_ID') ?: project.findProperty('artifactId') ?: 'LogKit-Android'
+                version = (project.hasProperty('version') && project.property('version') != 'unspecified') ?
+                          project.property('version') : (project.findProperty('PROJ_VERSION') ?: '1.0.1')
+
+                pom {
+                    name = 'LogKit Android'
+                    description = 'Pure Kotlin, Jetpack Compose Foundation logger for Android'
+                    url = 'https://github.com/e-hai/LogKit-Android'
+                    licenses {
+                        license {
+                            name = 'The Apache License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. 自定义远程 Maven 仓库动态挂载 (支持 Nexus / Artifactory / 阿里云等)
+        repositories {
+            def repoUrl = project.findProperty('MAVEN_REPO_URL') ?: System.getenv('MAVEN_REPO_URL')
+            if (repoUrl) {
+                maven {
+                    name = "customMaven"
+                    url = uri(repoUrl)
+                    def user = project.findProperty('MAVEN_REPO_USERNAME') ?: System.getenv('MAVEN_REPO_USERNAME')
+                    def pwd = project.findProperty('MAVEN_REPO_PASSWORD') ?: System.getenv('MAVEN_REPO_PASSWORD')
+                    if (user && pwd) {
+                        credentials {
+                            username = user
+                            password = pwd
+                        }
+                    }
+                }
             }
         }
     }
