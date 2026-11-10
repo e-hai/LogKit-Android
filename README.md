@@ -45,7 +45,7 @@ graph TD
     subgraph UI ["Compose 调试控制台"]
         F1["LogActivity (ComponentActivity 宿主)"]
         F2["LogViewModel (StateFlow 异步解析与过滤)"]
-        F3["LogScreen (Material3 Compose 原生界面)"]
+        F3["LogScreen (Compose 原生控制台，纯 Foundation 零依赖)"]
         F4["折叠式 Tag 搜索与多选过滤 (亮黄色高亮)"]
         F5["Level 长按独占只看该级别 (Solo Mode) 与条数徽标"]
     end
@@ -69,7 +69,7 @@ graph TD
 
 ## ✨ 核心特性
 
-- 🚀 **100% 纯 Kotlin & Compose 原生**：极简 10-File 架构，无繁复第三方依赖，采用 Material3 打造高颜值端侧控制台。
+- 🚀 **100% 纯 Kotlin & Compose 原生**：极简 10-File 架构，纯 Compose Foundation 构建，**零 Material3 / 零 Material 依赖**，彻底杜绝宿主版本冲突与 `NoSuchMethodError`。
 - 🔍 **可折叠内联 Tag 搜索与多选组合**：主界面一键折叠/展开搜索框，支持多 Tag 组合勾选过滤，匹配关键字自动应用**亮黄色高亮**（`#FFFFD54F`）。
 - 🎯 **Level 级别长按独占模式（Solo Mode）**：长按 `E` 芯片一秒快速切换为“只看 Error”，避免排查错误时逐个反选的繁琐操作；显示实时条数徽标。
 - 🏷️ **活动标签吸顶栏**：已选 Tag 以带 `✕` 的独立胶囊展示，点击一秒移除，并支持一键清空全部已选标签。
@@ -100,10 +100,10 @@ dependencyResolutionManagement {
 #### 方式 A：Version Catalog (`gradle/libs.versions.toml`) (推荐)
 ```toml
 [versions]
-logkit = "1.0.0"
+logkit = "1.0.1"
 
 [libraries]
-logkit = { group = "com.github.e-hai", name = "LogKit", version.ref = "logkit" }
+logkit = { group = "com.github.e-hai", name = "LogKit-Android", version.ref = "logkit" }
 ```
 在模块 `build.gradle` 中引入：
 ```groovy
@@ -115,14 +115,14 @@ dependencies {
 #### 方式 B：Groovy DSL (`build.gradle`)
 ```groovy
 dependencies {
-    implementation 'com.github.e-hai:LogKit:1.0.0'
+    implementation 'com.github.e-hai:LogKit-Android:1.0.1'
 }
 ```
 
 #### 方式 C：Kotlin DSL (`build.gradle.kts`)
 ```kotlin
 dependencies {
-    implementation("com.github.e-hai:LogKit:1.0.0")
+    implementation("com.github.e-hai:LogKit-Android:1.0.1")
 }
 ```
 

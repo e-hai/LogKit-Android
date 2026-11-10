@@ -11,7 +11,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -20,6 +22,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -28,25 +32,31 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowInsetsControllerCompat
 
 /**
- * 明暗双主题色彩配置
+ * 明暗双主题色彩配置 (完全自洽，不依赖任何 Material Design System)
  */
 private data class LogThemeColors(
     val isDark: Boolean,
@@ -58,7 +68,8 @@ private data class LogThemeColors(
     val textPrimary: Color,
     val textSecondary: Color,
     val dividerColor: Color,
-    val dialogBackground: Color
+    val dialogBackground: Color,
+    val primary: Color
 )
 
 private val DarkColors = LogThemeColors(
@@ -71,7 +82,8 @@ private val DarkColors = LogThemeColors(
     textPrimary = Color(0xFFE0E0E0),
     textSecondary = Color(0xFFA0A0A0),
     dividerColor = Color(0xFF2C2C2C),
-    dialogBackground = Color(0xFF1E1E1E)
+    dialogBackground = Color(0xFF1E1E1E),
+    primary = Color(0xFF42A5F5)
 )
 
 private val LightColors = LogThemeColors(
@@ -84,10 +96,97 @@ private val LightColors = LogThemeColors(
     textPrimary = Color(0xFF212121),
     textSecondary = Color(0xFF666666),
     dividerColor = Color(0xFFE0E0E0),
-    dialogBackground = Color(0xFFFFFFFF)
+    dialogBackground = Color(0xFFFFFFFF),
+    primary = Color(0xFF1976D2)
 )
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun LogText(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+    fontSize: TextUnit = TextUnit.Unspecified,
+    fontWeight: FontWeight? = null,
+    fontFamily: FontFamily? = null,
+    lineHeight: TextUnit = TextUnit.Unspecified,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip
+) {
+    BasicText(
+        text = text,
+        modifier = modifier,
+        style = TextStyle(
+            color = color,
+            fontSize = fontSize,
+            fontWeight = fontWeight,
+            fontFamily = fontFamily,
+            lineHeight = lineHeight
+        ),
+        maxLines = maxLines,
+        overflow = overflow
+    )
+}
+
+@Composable
+private fun LogText(
+    text: AnnotatedString,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+    fontSize: TextUnit = TextUnit.Unspecified,
+    fontWeight: FontWeight? = null,
+    fontFamily: FontFamily? = null,
+    lineHeight: TextUnit = TextUnit.Unspecified,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip
+) {
+    BasicText(
+        text = text,
+        modifier = modifier,
+        style = TextStyle(
+            color = color,
+            fontSize = fontSize,
+            fontWeight = fontWeight,
+            fontFamily = fontFamily,
+            lineHeight = lineHeight
+        ),
+        maxLines = maxLines,
+        overflow = overflow
+    )
+}
+
+@Composable
+private fun LogIcon(
+    imageVector: ImageVector,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    tint: Color = Color.Unspecified
+) {
+    Image(
+        imageVector = imageVector,
+        contentDescription = contentDescription,
+        modifier = modifier,
+        colorFilter = if (tint != Color.Unspecified) ColorFilter.tint(tint) else null
+    )
+}
+
+@Composable
+private fun LogIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LogScreen(
     viewModel: LogViewModel,
@@ -157,411 +256,444 @@ fun LogScreen(
         }
     }
 
-    Surface(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .navigationBarsPadding(),
-        color = themeColors.background
+            .background(themeColors.background)
+            .navigationBarsPadding()
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
 
-                // 顶部可收起折叠 Header
-                AnimatedVisibility(
-                    visible = isHeaderVisible,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
+            // 顶部可收起折叠 Header
+            AnimatedVisibility(
+                visible = isHeaderVisible,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .background(themeColors.appBarBackground)
+                        .statusBarsPadding()
                 ) {
-                    Column(
+                    // 1. 顶栏 (纯 Foundation Row 构建，零 Material 依赖)
+                    Row(
                         modifier = Modifier
-                            .background(themeColors.appBarBackground)
-                            .statusBarsPadding()
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 1. 顶栏 TopAppBar
-                        TopAppBar(
-                            title = {
-                                Column {
-                                    Text(
-                                        text = "LogKit 日志控制台",
-                                        style = MaterialTheme.typography.titleMedium.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = themeColors.textPrimary
-                                        )
-                                    )
-                                    val tagTitle = if (selectedTags.isEmpty()) {
-                                        "Tag: 全部标签"
-                                    } else {
-                                        "Tags (${selectedTags.size}): ${selectedTags.joinToString(", ")}"
-                                    }
-                                    Text(
-                                        text = "$tagTitle (${displayedLogs.size}/${allLogs.size} 条)",
-                                        style = MaterialTheme.typography.bodySmall.copy(color = themeColors.textSecondary),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            },
-                            navigationIcon = {
-                                IconButton(onClick = onBackClick) {
-                                    Icon(
-                                        imageVector = Icons.Default.ArrowBack,
-                                        contentDescription = "返回",
-                                        tint = themeColors.textPrimary
-                                    )
-                                }
-                            },
-                            actions = {
-                                // Tag 搜索折叠/展开按钮
-                                IconButton(onClick = { isSearchExpanded = !isSearchExpanded }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Search,
-                                        contentDescription = "搜索过滤Tag",
-                                        tint = if (isSearchExpanded || selectedTags.isNotEmpty()) MaterialTheme.colorScheme.primary else themeColors.textPrimary
-                                    )
-                                }
-
-                                // 明/暗 主题一键切换按钮
-                                IconButton(onClick = { isDarkTheme = !isDarkTheme }) {
-                                    Text(
-                                        text = if (isDarkTheme) "☀️" else "🌙",
-                                        fontSize = 18.sp
-                                    )
-                                }
-
-                                // 手动收起 Header 控制栏按钮 (与 iOS 保持一致)
-                                IconButton(onClick = { isHeaderVisible = false }) {
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowUp,
-                                        contentDescription = "收起控制栏",
-                                        tint = themeColors.textSecondary
-                                    )
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = themeColors.appBarBackground
+                        LogIconButton(onClick = onBackClick) {
+                            LogIcon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "返回",
+                                tint = themeColors.textPrimary,
+                                modifier = Modifier.size(24.dp)
                             )
-                        )
+                        }
 
-                        // 2. 可折叠的 Tag 搜索与多选操作栏
-                        AnimatedVisibility(
-                            visible = isSearchExpanded,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 8.dp)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(themeColors.filterBarBackground)
-                                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                            ) {
-                                // 搜索输入框
-                                OutlinedTextField(
-                                    value = tagSearchQuery,
-                                    onValueChange = { tagSearchQuery = it },
-                                    placeholder = { Text("搜索并多选 Tag...", color = themeColors.textSecondary, fontSize = 13.sp) },
-                                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = themeColors.textSecondary) },
-                                    trailingIcon = {
-                                        if (tagSearchQuery.isNotEmpty()) {
-                                            IconButton(onClick = { tagSearchQuery = "" }) {
-                                                Icon(Icons.Default.Clear, contentDescription = "清空", tint = themeColors.textSecondary)
-                                            }
-                                        }
-                                    },
-                                    singleLine = true,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(50.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedTextColor = themeColors.textPrimary,
-                                        unfocusedTextColor = themeColors.textPrimary,
-                                        cursorColor = MaterialTheme.colorScheme.primary,
-                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                        unfocusedBorderColor = themeColors.dividerColor
-                                    )
-                                )
+                            LogText(
+                                text = "LogKit 日志控制台",
+                                color = themeColors.textPrimary,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            val tagTitle = if (selectedTags.isEmpty()) {
+                                "Tag: 全部标签"
+                            } else {
+                                "Tags (${selectedTags.size}): ${selectedTags.joinToString(", ")}"
+                            }
+                            LogText(
+                                text = "$tagTitle (${displayedLogs.size}/${allLogs.size} 条)",
+                                color = themeColors.textSecondary,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
 
-                                Spacer(modifier = Modifier.height(8.dp))
+                        // Tag 搜索折叠/展开按钮
+                        LogIconButton(onClick = { isSearchExpanded = !isSearchExpanded }) {
+                            LogIcon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "搜索过滤Tag",
+                                tint = if (isSearchExpanded || selectedTags.isNotEmpty()) themeColors.primary else themeColors.textPrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
 
-                                // Tag 多选滚动条（自然字典序排列，支持点选勾选多选）
-                                if (filteredTags.isEmpty()) {
-                                    Text(
-                                        text = "未找到匹配 \"$tagSearchQuery\" 的标签",
-                                        color = themeColors.textSecondary,
-                                        fontSize = 12.sp,
-                                        modifier = Modifier.padding(vertical = 4.dp)
-                                    )
-                                } else {
-                                    LazyRow(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        // 明/暗 主题一键切换按钮
+                        LogIconButton(onClick = { isDarkTheme = !isDarkTheme }) {
+                            LogText(
+                                text = if (isDarkTheme) "☀️" else "🌙",
+                                fontSize = 18.sp
+                            )
+                        }
+
+                        // 手动收起 Header 控制栏按钮 (与 iOS 保持一致)
+                        LogIconButton(onClick = { isHeaderVisible = false }) {
+                            LogIcon(
+                                imageVector = Icons.Default.KeyboardArrowUp,
+                                contentDescription = "收起控制栏",
+                                tint = themeColors.textSecondary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+
+                    // 2. 可折叠的 Tag 搜索与多选操作栏
+                    AnimatedVisibility(
+                        visible = isSearchExpanded,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(themeColors.filterBarBackground)
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            // 搜索输入框 (使用 BasicTextField，纯 Foundation)
+                            BasicTextField(
+                                value = tagSearchQuery,
+                                onValueChange = { tagSearchQuery = it },
+                                singleLine = true,
+                                textStyle = TextStyle(
+                                    color = themeColors.textPrimary,
+                                    fontSize = 13.sp
+                                ),
+                                cursorBrush = SolidColor(themeColors.primary),
+                                decorationBox = { innerTextField ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(40.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(themeColors.chipBackground)
+                                            .border(1.dp, themeColors.dividerColor, RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 10.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        // 全选 / 清空全部按钮
-                                        item {
-                                            FilterChip(
-                                                selected = selectedTags.isEmpty(),
-                                                onClick = { viewModel.clearAllTags() },
-                                                label = { Text("全部 Tag", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
-                                                colors = FilterChipDefaults.filterChipColors(
-                                                    containerColor = themeColors.chipBackground,
-                                                    labelColor = themeColors.textPrimary,
-                                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                                    selectedLabelColor = Color.White
+                                        LogIcon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = null,
+                                            tint = themeColors.textSecondary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            if (tagSearchQuery.isEmpty()) {
+                                                LogText(
+                                                    text = "输入Tag名称模糊搜索...",
+                                                    color = themeColors.textSecondary,
+                                                    fontSize = 13.sp
                                                 )
-                                            )
+                                            }
+                                            innerTextField()
                                         }
-
-                                        items(filteredTags) { tag ->
-                                            val isSelected = selectedTags.contains(tag)
-                                            FilterChip(
-                                                selected = isSelected,
-                                                onClick = { viewModel.toggleTag(tag) },
-                                                label = {
-                                                    val prefix = if (isSelected) "✓ " else ""
-                                                    val highlighted = buildHighlightedString(tag, tagSearchQuery)
-                                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                                        if (prefix.isNotEmpty()) {
-                                                            Text(prefix, fontWeight = FontWeight.Bold)
-                                                        }
-                                                        Text(highlighted, fontSize = 12.sp)
-                                                    }
-                                                },
-                                                colors = FilterChipDefaults.filterChipColors(
-                                                    containerColor = themeColors.chipBackground,
-                                                    labelColor = themeColors.textPrimary,
-                                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                                    selectedLabelColor = Color.White
-                                                ),
-                                                border = FilterChipDefaults.filterChipBorder(
-                                                    enabled = true,
-                                                    selected = isSelected,
-                                                    borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                                    borderWidth = 1.dp
+                                        if (tagSearchQuery.isNotEmpty()) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .clickable { tagSearchQuery = "" },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                LogIcon(
+                                                    imageVector = Icons.Default.Clear,
+                                                    contentDescription = "清空",
+                                                    tint = themeColors.textSecondary,
+                                                    modifier = Modifier.size(16.dp)
                                                 )
-                                            )
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Tag 多选横向滚动条（自然字典序排列，支持点选勾选多选）
+                            if (filteredTags.isEmpty()) {
+                                LogText(
+                                    text = "无匹配的标签",
+                                    color = themeColors.textSecondary,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            } else {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(filteredTags) { tag ->
+                                        val isSelected = selectedTags.contains(tag)
+                                        val highlighted = buildHighlightedString(tag, tagSearchQuery)
+
+                                        Box(
+                                            modifier = Modifier
+                                                .padding(vertical = 2.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(if (isSelected) themeColors.primary else themeColors.chipBackground)
+                                                .border(
+                                                    1.dp,
+                                                    if (isSelected) themeColors.primary else Color.Transparent,
+                                                    RoundedCornerShape(8.dp)
+                                                )
+                                                .clickable {
+                                                    viewModel.toggleTag(tag)
+                                                }
+                                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                if (isSelected) {
+                                                    LogText(
+                                                        text = "✓ ",
+                                                        color = Color.White,
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                                LogText(
+                                                    text = highlighted,
+                                                    fontSize = 12.sp,
+                                                    color = if (isSelected) Color.White else themeColors.textPrimary
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
+                    }
 
-                        // 3. 级别 (Priority) 筛选开关 Chip 栏 (支持短按多选 + 长按独占只看该级别)
+                    // 3. 级别 (Priority) 筛选开关 Chip 栏 (支持短按多选 + 长按独占只看该级别)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(themeColors.filterBarBackground)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // "ALL" 全选快捷开关
+                        val isAllSelected = selectedLevels.size == allLevels.size
+                        Box(
+                            modifier = Modifier
+                                .padding(vertical = 2.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isAllSelected) themeColors.primary else themeColors.chipBackground)
+                                .clickable {
+                                    selectedLevels = if (isAllSelected) setOf("ERROR") else allLevels.toSet()
+                                }
+                                .padding(horizontal = 8.dp, vertical = 6.dp)
+                        ) {
+                            LogText(
+                                text = if (isAllSelected) "✓ 全部" else "全部",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                color = if (isAllSelected) Color.White else (if (themeColors.isDark) Color(0xFF888888) else Color(0xFF666666))
+                            )
+                        }
+
+                        allLevels.forEach { level ->
+                            val isSelected = selectedLevels.contains(level)
+                            val color = getPriorityColor(level)
+                            val shortName = when (level) {
+                                "VERBOSE" -> "V"
+                                "DEBUG" -> "D"
+                                "INFO" -> "I"
+                                "WARN" -> "W"
+                                "ERROR" -> "E"
+                                else -> level
+                            }
+                            val count = levelCounts[level] ?: 0
+
+                            Box(
+                                modifier = Modifier
+                                    .padding(vertical = 2.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) color else themeColors.chipBackground)
+                                    .combinedClickable(
+                                        onClick = {
+                                            // 短按：常规多选/反选切换
+                                            selectedLevels = if (isSelected) {
+                                                if (selectedLevels.size > 1) selectedLevels - level else selectedLevels
+                                            } else {
+                                                selectedLevels + level
+                                            }
+                                        },
+                                        onLongClick = {
+                                            // 长按：独占该级别 (Solo Mode)！若已是独占态则恢复全选
+                                            selectedLevels = if (selectedLevels == setOf(level)) {
+                                                allLevels.toSet()
+                                            } else {
+                                                setOf(level)
+                                            }
+                                            Toast.makeText(context, if (selectedLevels.size == 1) "已独占过滤: 只看 $level" else "已恢复全选级别", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                            ) {
+                                LogText(
+                                    text = if (isSelected) "✓ $shortName ($count)" else "$shortName ($count)",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (isSelected) Color.White else (if (themeColors.isDark) Color(0xFF888888) else Color(0xFF666666))
+                                )
+                            }
+                        }
+                    }
+
+                    // 4. 活动 Tag 胶囊栏（当选中了具体 Tag 时常驻显示，支持单个一键点击 ✕ 清除）
+                    if (selectedTags.isNotEmpty()) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(themeColors.filterBarBackground)
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "级别:",
-                                color = if (selectedLevels.size < allLevels.size) MaterialTheme.colorScheme.primary else themeColors.textSecondary,
+                            LogText(
+                                text = "已选 (${selectedTags.size}):",
+                                color = themeColors.primary,
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(end = 6.dp)
                             )
 
-                            // 一键全选 ALL 按钮
-                            val isAllSelected = selectedLevels.size == allLevels.size
-                            FilterChip(
-                                selected = isAllSelected,
-                                onClick = { selectedLevels = allLevels.toSet() },
-                                label = {
-                                    Text(
-                                        text = "ALL",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    containerColor = themeColors.chipBackground,
-                                    labelColor = themeColors.textSecondary,
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = Color.White
-                                )
-                            )
-
-                            allLevels.forEach { level ->
-                                val isSelected = selectedLevels.contains(level)
-                                val color = getPriorityColor(level)
-                                val shortName = when (level) {
-                                    "VERBOSE" -> "V"
-                                    "DEBUG" -> "D"
-                                    "INFO" -> "I"
-                                    "WARN" -> "W"
-                                    "ERROR" -> "E"
-                                    else -> level
-                                }
-                                val count = levelCounts[level] ?: 0
-
-                                Box(
-                                    modifier = Modifier
-                                        .combinedClickable(
-                                            onClick = {
-                                                // 短按：常规多选/反选切换
-                                                selectedLevels = if (isSelected) {
-                                                    if (selectedLevels.size > 1) selectedLevels - level else selectedLevels
-                                                } else {
-                                                    selectedLevels + level
-                                                }
-                                            },
-                                            onLongClick = {
-                                                // 长按：独占该级别 (Solo Mode)！若已是独占态则恢复全选
-                                                selectedLevels = if (selectedLevels == setOf(level)) {
-                                                    allLevels.toSet()
-                                                } else {
-                                                    setOf(level)
-                                                }
-                                                Toast.makeText(context, if (selectedLevels.size == 1) "已独占过滤: 只看 $level" else "已恢复全选级别", Toast.LENGTH_SHORT).show()
-                                            }
-                                        )
-                                ) {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = if (isSelected) color else themeColors.chipBackground,
-                                        modifier = Modifier.padding(vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = if (isSelected) "✓ $shortName ($count)" else "$shortName ($count)",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 11.sp,
-                                            color = if (isSelected) Color.White else (if (themeColors.isDark) Color(0xFF888888) else Color(0xFF666666)),
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // 4. 活动 Tag 胶囊栏（当选中了具体 Tag 时常驻显示，支持单个一键点击 ✕ 清除）
-                        if (selectedTags.isNotEmpty()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(themeColors.filterBarBackground)
-                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                            LazyRow(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = "已选 (${selectedTags.size}):",
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(end = 6.dp)
-                                )
-
-                                LazyRow(
-                                    modifier = Modifier.weight(1f),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    items(selectedTags.toList()) { tag ->
-                                        Surface(
-                                            shape = RoundedCornerShape(12.dp),
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                        ) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                items(selectedTags.toList()) { tag ->
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(themeColors.primary.copy(alpha = 0.15f))
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            LogText(
+                                                text = tag,
+                                                fontSize = 11.sp,
+                                                color = themeColors.primary,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(16.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clickable { viewModel.removeTag(tag) },
+                                                contentAlignment = Alignment.Center
                                             ) {
-                                                Text(
-                                                    text = tag,
-                                                    fontSize = 11.sp,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    fontWeight = FontWeight.SemiBold
+                                                LogIcon(
+                                                    imageVector = Icons.Default.Close,
+                                                    contentDescription = "移除",
+                                                    tint = themeColors.primary,
+                                                    modifier = Modifier.size(12.dp)
                                                 )
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                IconButton(
-                                                    onClick = { viewModel.removeTag(tag) },
-                                                    modifier = Modifier.size(16.dp)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Close,
-                                                        contentDescription = "移除",
-                                                        tint = MaterialTheme.colorScheme.primary,
-                                                        modifier = Modifier.size(12.dp)
-                                                    )
-                                                }
                                             }
                                         }
                                     }
                                 }
+                            }
 
-                                TextButton(
-                                    onClick = { viewModel.clearAllTags() },
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                    modifier = Modifier.height(28.dp)
-                                ) {
-                                    Text("清空", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
-                                }
+                            Box(
+                                modifier = Modifier
+                                    .height(28.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable { viewModel.clearAllTags() }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                LogText("清空", fontSize = 11.sp, color = themeColors.primary, fontWeight = FontWeight.Bold)
                             }
                         }
-
-                        Divider(color = themeColors.dividerColor, thickness = 1.dp)
                     }
-                }
 
-                // 日志列表区域（在 Header 收起时自动沉浸全屏）
-                if (displayedLogs.isEmpty()) {
+                    // 分割线 (纯 Box 实现)
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (selectedLevels.size < allLevels.size || selectedTags.isNotEmpty()) {
-                                "未匹配到相关条件的日志"
-                            } else {
-                                "暂无相关日志记录"
-                            },
-                            color = themeColors.textSecondary,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            top = if (isHeaderVisible) 8.dp else 4.dp,
-                            bottom = 8.dp,
-                            start = 10.dp,
-                            end = 10.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        items(displayedLogs) { logInfo ->
-                            LogItemCard(
-                                logInfo = logInfo,
-                                themeColors = themeColors,
-                                onCopyClick = {
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    val clip = ClipData.newPlainText("LogKit", "${logInfo.dateString} [${logInfo.priority}] ${logInfo.tag}: ${logInfo.message}")
-                                    clipboard.setPrimaryClip(clip)
-                                    Toast.makeText(context, "已复制日志至剪贴板", Toast.LENGTH_SHORT).show()
-                                }
-                            )
-                        }
-                    }
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(themeColors.dividerColor)
+                    )
                 }
             }
 
-            // 当 Header 处于收起状态时，右上角沉浸式显示迷你展开控制按钮
-            if (!isHeaderVisible) {
-                SmallFloatingActionButton(
-                    onClick = { isHeaderVisible = true },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .statusBarsPadding()
-                        .padding(12.dp),
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
-                    contentColor = Color.White
+            // 日志列表区域（在 Header 收起时自动沉浸全屏）
+            if (displayedLogs.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.List,
-                        contentDescription = "展开筛选控制栏",
-                        modifier = Modifier.size(18.dp)
+                    LogText(
+                        text = if (selectedLevels.size < allLevels.size || selectedTags.isNotEmpty()) {
+                            "未匹配到相关条件的日志"
+                        } else {
+                            "暂无相关日志记录"
+                        },
+                        color = themeColors.textSecondary,
+                        fontSize = 14.sp
                     )
                 }
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        top = if (isHeaderVisible) 8.dp else 4.dp,
+                        bottom = 8.dp,
+                        start = 10.dp,
+                        end = 10.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(displayedLogs) { logInfo ->
+                        LogItemCard(
+                            logInfo = logInfo,
+                            themeColors = themeColors,
+                            onCopyClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("LogKit", "${logInfo.dateString} [${logInfo.priority}] ${logInfo.tag}: ${logInfo.message}")
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "已复制日志至剪贴板", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // 当 Header 处于收起状态时，右上角沉浸式显示迷你展开控制按钮
+        if (!isHeaderVisible) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(12.dp)
+                    .size(40.dp)
+                    .shadow(4.dp, RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(themeColors.primary.copy(alpha = 0.9f))
+                    .clickable { isHeaderVisible = true },
+                contentAlignment = Alignment.Center
+            ) {
+                LogIcon(
+                    imageVector = Icons.Default.List,
+                    contentDescription = "展开筛选控制栏",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
@@ -575,15 +707,17 @@ private fun LogItemCard(
 ) {
     val levelColor = getPriorityColor(logInfo.priority)
 
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCopyClick() },
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = themeColors.cardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .shadow(1.dp, RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
+            .background(themeColors.cardBackground)
+            .border(0.5.dp, themeColors.dividerColor, RoundedCornerShape(8.dp))
+            .clickable { onCopyClick() }
+            .padding(10.dp)
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
+        Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -591,32 +725,33 @@ private fun LogItemCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // Priority Badge
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = levelColor.copy(alpha = 0.2f)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(levelColor.copy(alpha = 0.2f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text(
+                        LogText(
                             text = logInfo.priority,
                             color = levelColor,
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            fontWeight = FontWeight.Bold
                         )
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
 
                     // Tag
-                    Text(
+                    LogText(
                         text = logInfo.tag,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = themeColors.primary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp
                     )
                 }
 
                 // 时间
-                Text(
+                LogText(
                     text = logInfo.dateString,
                     color = themeColors.textSecondary,
                     fontSize = 11.sp,
@@ -628,7 +763,7 @@ private fun LogItemCard(
 
             // 日志消息
             SelectionContainer {
-                Text(
+                LogText(
                     text = logInfo.message,
                     color = themeColors.textPrimary,
                     fontSize = 13.sp,

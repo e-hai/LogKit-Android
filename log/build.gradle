@@ -55,17 +55,18 @@ dependencies {
 
     implementation libs.androidx.core.ktx
     implementation libs.androidx.appcompat
-    implementation libs.material
     implementation libs.kotlinx.coroutines.android
     implementation libs.androidx.activity.ktx
     implementation libs.androidx.lifecycle.viewmodel.ktx
 
-    // Jetpack Compose
+    // Jetpack Compose (100% Pure Foundation & UI, Zero Material3, Zero Material)
     implementation platform(libs.androidx.compose.bom)
     implementation libs.androidx.compose.ui
     implementation libs.androidx.compose.ui.graphics
     implementation libs.androidx.compose.ui.tooling.preview
-    implementation libs.androidx.compose.material3
+    implementation libs.androidx.compose.foundation
+    implementation libs.androidx.compose.animation
+    implementation libs.androidx.compose.material.icons.core
     implementation libs.androidx.activity.compose
     implementation libs.androidx.lifecycle.viewmodel.compose
 

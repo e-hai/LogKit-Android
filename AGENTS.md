@@ -13,7 +13,7 @@ Welcome to **LogKit Android**! This file serves as the definitive reference manu
 ### Key Architectural Guidelines
 1. **100% Pure Kotlin & Idiomatic**: No legacy Java code, no obsolete helpers, SAM functional interfaces where appropriate.
 2. **Minimalist 10-File Architecture**: Highly cohesive components without unnecessary abstraction layers.
-3. **Jetpack Compose (Material3) Console**: Dark (`#121212`) & Light (`#F5F5F5`) dual-theme console.
+3. **Pure Compose Foundation Console**: Dark (`#121212`) & Light (`#F5F5F5`) dual-theme console built 100% with Compose Foundation (Zero Material3 / Zero Material dependencies for complete host ABI binary stability).
 4. **Gradle Version Catalog**: Dependencies managed via `gradle/libs.versions.toml`.
 
 ---
@@ -34,7 +34,7 @@ log/src/main/java/com/kit/log/
 │   └── DiskLogWriteReadStrategy.kt   # Background HandlerThread Disk Persistence (500KB Split, 3000-line Reverse Read)
 └── ui/
     ├── LogActivity.kt                # ComponentActivity Host with Edge-to-Edge Window
-    ├── LogScreen.kt                  # Material3 Compose Log Inspection Console (Full Feature Set)
+    ├── LogScreen.kt                  # Pure Foundation Compose Log Inspection Console (Full Feature Set, Zero Material)
     └── LogViewModel.kt               # ViewModel with Multi-Tag Filter Flow & Level Calculations
 ```
 
