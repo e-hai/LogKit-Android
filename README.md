@@ -79,23 +79,65 @@ graph TD
 
 ---
 
-## 🛠️ 第三方接入与依赖配置
+## 🛠️ 第三方接入与依赖配置 (GitHub Packages)
 
-### 步骤 1：添加 JitPack Maven 仓库
+LogKit 现已官方托管发布在 **GitHub Packages** Maven 仓库中。
 
-#### 推荐：在 `settings.gradle` 中添加
+> 💡 **提示**：GitHub Packages 强制要求调用方进行身份鉴权（即使访问 Public 开源仓库）。请先按照下述步骤 1 生成并配置只读访问凭证。
+
+### 步骤 1：配置 GitHub Packages 凭证 (Token)
+
+1. 登录 GitHub，进入 **Settings** ➔ **Developer settings** ➔ **Personal access tokens (classic)** ➔ **Generate new token**；
+2. 勾选 **`read:packages`** 权限（仅需下载包的只读权限）；
+3. 为了避免将个人密钥提交到代码仓库，推荐在您电脑的**全局属性文件** `~/.gradle/gradle.properties`（Windows 为 `C:\Users\<用户名>\.gradle\gradle.properties`）中配置凭据：
+   ```properties
+   gpr.user=YOUR_GITHUB_USERNAME
+   gpr.key=ghp_YOUR_PERSONAL_ACCESS_TOKEN
+   ```
+
+---
+
+### 步骤 2：添加 GitHub Packages 仓库地址
+
+#### 在工程 `settings.gradle` (Groovy DSL) 中添加：
 ```groovy
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://jitpack.io' } // 👈 添加 JitPack 仓库
+        maven {
+            url = uri("https://maven.pkg.github.com/e-hai/LogKit-Android")
+            credentials {
+                username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
+                password = providers.gradleProperty("gpr.key").orNull ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
     }
 }
 ```
 
-### 步骤 2：添加依赖
+#### 或在工程 `settings.gradle.kts` (Kotlin DSL) 中添加：
+```kotlin
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url = uri("https://maven.pkg.github.com/e-hai/LogKit-Android")
+            credentials {
+                username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
+                password = providers.gradleProperty("gpr.key").orNull ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}
+```
+
+---
+
+### 步骤 3：添加依赖
 
 #### 方式 A：Version Catalog (`gradle/libs.versions.toml`) (推荐)
 ```toml

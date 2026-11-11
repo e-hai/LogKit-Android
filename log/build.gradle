@@ -64,13 +64,28 @@ afterEvaluate {
             }
         }
 
-        // 2. 自定义远程 Maven 仓库动态挂载 (支持 Nexus / Artifactory / 阿里云等)
+        // 2. 远程 Maven 仓库挂载
         repositories {
-            def repoUrl = project.findProperty('MAVEN_REPO_URL') ?: System.getenv('MAVEN_REPO_URL')
-            if (repoUrl) {
+            // 2.1 GitHub Packages (官方原生仓库)
+            maven {
+                name = "GitHubPackages"
+                url = uri("https://maven.pkg.github.com/e-hai/LogKit-Android")
+                def user = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+                def token = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+                if (user && token) {
+                    credentials {
+                        username = user
+                        password = token
+                    }
+                }
+            }
+
+            // 2.2 自定义远程 Maven 仓库动态挂载 (支持 Nexus / Artifactory / 阿里云等)
+            def customRepoUrl = project.findProperty('MAVEN_REPO_URL') ?: System.getenv('MAVEN_REPO_URL')
+            if (customRepoUrl) {
                 maven {
                     name = "customMaven"
-                    url = uri(repoUrl)
+                    url = uri(customRepoUrl)
                     def user = project.findProperty('MAVEN_REPO_USERNAME') ?: System.getenv('MAVEN_REPO_USERNAME')
                     def pwd = project.findProperty('MAVEN_REPO_PASSWORD') ?: System.getenv('MAVEN_REPO_PASSWORD')
                     if (user && pwd) {

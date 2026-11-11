@@ -68,5 +68,22 @@ AI Agents MUST run the build verification command after modifying code:
 
 ```bash
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
-./gradlew assembleDebug
+
+# 1. 编译与单元测试验证
+./gradlew clean assembleDebug test
+
+# 2. 本地 Maven 调试发布验证
+./gradlew :log:publishToMavenLocal -Pversion=1.0.1
+
+# 3. 验证 GitHub Packages 发布任务挂载
+./gradlew :log:generatePomFileForReleasePublication -Pversion=1.0.1
 ```
+
+---
+
+## 📦 Package Distribution & CI/CD Workflow
+
+* **GitHub Packages 官方源**：`https://maven.pkg.github.com/e-hai/LogKit-Android`
+* **自动化发布工作流**：`.github/workflows/publish.yml`
+  - 触发条件：推送任意版本 Tag（如 `git push origin 1.0.1`）；
+  - 权限：`packages: write`，使用 GitHub Actions 自动注入的 `GITHUB_TOKEN` 执行 `:log:publishReleasePublicationToGitHubPackagesRepository`。
