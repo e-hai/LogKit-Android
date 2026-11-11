@@ -60,6 +60,17 @@ afterEvaluate {
                             url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
                         }
                     }
+                    developers {
+                        developer {
+                            id = 'e-hai'
+                            name = 'e-hai'
+                        }
+                    }
+                    scm {
+                        connection = 'scm:git:git://github.com/e-hai/LogKit-Android.git'
+                        developerConnection = 'scm:git:ssh://git@github.com:e-hai/LogKit-Android.git'
+                        url = 'https://github.com/e-hai/LogKit-Android'
+                    }
                 }
             }
         }
@@ -70,13 +81,9 @@ afterEvaluate {
             maven {
                 name = "GitHubPackages"
                 url = uri("https://maven.pkg.github.com/e-hai/LogKit-Android")
-                def user = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
-                def token = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
-                if (user && token) {
-                    credentials {
-                        username = user
-                        password = token
-                    }
+                credentials {
+                    username = providers.gradleProperty("gpr.user").orNull ?: providers.environmentVariable("GITHUB_ACTOR").orNull
+                    password = providers.gradleProperty("gpr.key").orNull ?: providers.environmentVariable("GITHUB_TOKEN").orNull
                 }
             }
 
